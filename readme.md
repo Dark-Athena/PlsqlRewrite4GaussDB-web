@@ -133,8 +133,8 @@ PlSqlRewrite4GaussDB/
 
 ```bash
 # 克隆项目
-git clone https://gitee.com/darkathena/PlsqlRewrite4GaussDB-web2.git
-cd PlsqlRewrite4GaussDB-web2
+git clone https://gitee.com/darkathena/PlsqlRewrite4GaussDB-web.git
+cd PlsqlRewrite4GaussDB-web
 
 # 一键构建所有模块
 ./build_full_release.sh    # Linux/Mac
