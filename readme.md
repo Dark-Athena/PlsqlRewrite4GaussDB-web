@@ -112,6 +112,12 @@ PlSqlRewrite4GaussDB/
     └── 📄 *.yaml            # 高级规则配置
 ```
 
+<div align="center">
+  <img src="pic/project-list.png" alt="项目列表界面" width="600" />
+  <br/>
+  <em>Web端项目列表界面预览</em>
+</div>
+
 ### 技术栈
 
 | 模块 | 技术栈 | 版本 |
@@ -180,6 +186,39 @@ java -jar plsql-rewriter.jar input_dir output_dir 10
 ```
 
 ### 2. Web界面使用
+
+#### 登录界面
+
+<div align="center">
+  <img src="pic/login.png" alt="登录界面" width="400" />
+</div>
+
+#### 创建项目
+
+<div align="center">
+  <img src="pic/new-project.png" alt="新建项目" width="400" />
+  <img src="pic/new-project2.png" alt="新建项目（详细）" width="400" />
+</div>
+
+#### 项目列表
+
+<div align="center">
+  <img src="pic/project-list.png" alt="项目列表" width="600" />
+</div>
+
+#### 转换详情与差异对比
+
+<div align="center">
+  <img src="pic/convert_detail.png" alt="转换详情" width="600" />
+  <img src="pic/diff.png" alt="差异对比" width="600" />
+</div>
+
+#### 在线SQL转换
+
+<div align="center">
+  <img src="pic/convert_online.png" alt="在线SQL转换" width="600" />
+</div>
+
 
 #### 项目管理
 1. **创建项目**：设置项目名称和描述
