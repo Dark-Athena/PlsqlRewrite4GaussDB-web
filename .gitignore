@@ -1,0 +1,17 @@
+/build/*
+/src/main/java/PlSqlLexer.interp
+/src/main/java/PlSqlLexer.java
+/src/main/java/PlSqlLexer.tokens
+/src/main/java/PlSqlParser.interp
+/src/main/java/PlSqlParser.java
+/src/main/java/PlSqlParser.tokens
+/src/main/java/PlSqlParserBaseVisitor.java
+/src/main/java/PlSqlParserVisitor.java
+/PlSqlRewriter.jar
+/tmp/*
+/logs/*
+/target/*
+/release/*
+/webapp/src/main/resources/static/*
+/webapp/target/*
+/webapp/logs/*

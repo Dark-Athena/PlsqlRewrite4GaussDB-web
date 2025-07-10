@@ -1,0 +1,3 @@
+Manifest-Version: 1.0
+Main-Class: BatchProcessor
+Class-Path: lib/antlr-4.13.2-complete.jar lib/snakeyaml-2.3.jar lib/slf4j-api-2.0.9.jar lib/logback-core-1.4.14.jar lib/logback-classic-1.4.14.jar

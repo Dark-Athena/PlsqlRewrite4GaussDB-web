@@ -1,0 +1,11 @@
+rules:
+  - pattern: (\w+|\w+\(\w+\)|\w+\.\w+)(\.uf_tostring\(\)|\.uf_tostring)
+    replacement: pkgs_ty2string.uf_ty2string($1)
+  - pattern: (\S+)(\.up_copytype\(|\.up_copytype\([^=>]*=>)\s*([^=>\s]+(?:\([^)]*\))?)\s*\)
+    replacement: pkgs_typecopy.up_copytype($3,$1)
+  - pattern: sysdate\s*\+\s*trim\(i_chdaternge\)
+    replacement: SYSDATE + to_number(TRIM(i_chdaternge))
+  - pattern: NULL AS capital
+    replacement: cast(NULL as number) AS capital
+  - pattern: for\s*(\w*)\s*in\s*(\w*)\.first\s*\.\.\s*\w*\.last 
+    replacement: for $1 in 1..$2.count

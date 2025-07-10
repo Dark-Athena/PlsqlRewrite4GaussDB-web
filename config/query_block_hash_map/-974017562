@@ -1,0 +1,2 @@
+select t1.* from t_hashcode t1, t_x_hashcode t22  --中文注释
+where t1.id=t22.xid

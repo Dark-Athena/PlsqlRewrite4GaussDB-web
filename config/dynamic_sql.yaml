@@ -1,0 +1,14 @@
+# 动态SQL改写规则配置文件
+# 格式说明：
+# - pattern: 正则表达式，用于匹配要处理的字符串
+#   action: 处理动作，可选值：remove（删除匹配的部分）或replace（替换为指定内容）
+#   target: 当action为replace时，替换的目标格式字符串
+
+# 示例规则
+rules:
+  - pattern: (?i)alter\s+session\s+set
+    action: remove
+    target: 
+  - pattern: (?i)truncate\s+table\s+(\w+)\s+reuse\s+storage
+    action: replace
+    target: truncate table $1 

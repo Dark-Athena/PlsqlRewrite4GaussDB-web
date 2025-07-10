@@ -1,0 +1,5 @@
+/*aaa*/
+function add_func(a number) is 
+begin
+return a;
+end;

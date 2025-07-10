@@ -1,0 +1,5 @@
+DECLARE
+  v_count NUMBER;
+BEGIN
+  SELECT COUNT(*) INTO v_count FROM dual;
+END;
