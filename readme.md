@@ -131,7 +131,7 @@ PlSqlRewrite4GaussDB/
 
 ### 环境要求
 
-- **Java**: JDK 11+ (推荐JDK 11)
+- **Java**: JDK 17+ (推荐JDK 17)
 - **Node.js**: 16+ (仅前端开发需要)
 - **Maven**: 3.6+ (可选，转换核心支持离线构建)
 
