@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Java](https://img.shields.io/badge/Java-11+-orange.svg)
+![Java](https://img.shields.io/badge/Java-17+-orange.svg)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.5-brightgreen.svg)
 ![Vue.js](https://img.shields.io/badge/Vue.js-3.5.17-4FC08D.svg)
 ![ANTLR4](https://img.shields.io/badge/ANTLR4-4.13.2-blue.svg)
@@ -12,7 +12,7 @@
 
 *让Oracle到GaussDB的PLSQL迁移变得简单高效*
 
-[📖 核心模块文档](./readme_core.md) | [🔧 快速开始](#快速开始) | [📋 功能特性](#功能特性) | [🎯 使用场景](#使用场景)
+[📖 核心模块文档](./readme_core.md) | [🔧 快速开始](#快速开始) | [📋 功能特性](#功能特性) 
 
 </div>
 
@@ -22,7 +22,6 @@
 
 - [项目简介](#项目简介)
 - [功能特性](#功能特性)
-- [使用场景](#使用场景)
 - [系统架构](#系统架构)
 - [快速开始](#快速开始)
 - [详细使用指南](#详细使用指南)
@@ -122,7 +121,7 @@ PlSqlRewrite4GaussDB/
 
 | 模块 | 技术栈 | 版本 |
 |------|--------|------|
-| **转换核心** | Java + ANTLR4 | Java 8+, ANTLR4 4.13.2 |
+| **转换核心** | Java + ANTLR4 | Java 11+, ANTLR4 4.13.2 |
 | **后端服务** | Spring Boot | 3.2.5 |
 | **前端界面** | Vue.js + Element Plus | Vue 3.5.17 |
 | **数据库** | SQLite | 3.45.1.0 |
