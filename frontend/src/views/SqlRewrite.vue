@@ -17,6 +17,10 @@
         <el-button type="primary" @click="handleRewrite" :loading="loading">
           转换 <el-icon class="el-icon--right"><Right /></el-icon>
         </el-button>
+        <div class="timeout-config">
+          <label style="font-size: 12px; color: #666;">超时时间（秒）</label>
+          <el-input-number v-model="timeoutSeconds" :min="5" :max="300" size="small" style="width: 100px;" />
+        </div>
         <el-button type="info" style="margin-top:12px;" @click="showDiffDialog = true" :disabled="!sourceSql || !rewrittenSql">显示差异</el-button>
         <el-button type="warning" style="margin-top:12px;" @click="clearAll">清空</el-button>
       </div>
@@ -53,6 +57,7 @@ const rewrittenSql = ref('');
 const loading = ref(false);
 const showDiffDialog = ref(false);
 const diffHtml = ref('');
+const timeoutSeconds = ref(20);
 
 onMounted(() => {
   // 页面加载时自动恢复上次内容
@@ -86,10 +91,15 @@ const handleRewrite = async () => {
   loading.value = true;
   rewrittenSql.value = ''; // 清空上次的结果
   try {
-    const response = await rewriteSql(sourceSql.value);
+    const response = await rewriteSql(sourceSql.value, timeoutSeconds.value);
     rewrittenSql.value = response;
   } catch (error) {
-    const errorMsg = error.response?.data || '转换失败，请检查后端服务';
+    let errorMsg = '转换失败，请检查后端服务';
+    if (error.response?.status === 408) {
+      errorMsg = '转换超时，请尝试增加超时时间或简化SQL语句';
+    } else if (error.response?.data) {
+      errorMsg = error.response.data;
+    }
     ElMessage.error(errorMsg);
     console.error(error);
   } finally {
@@ -122,5 +132,13 @@ const clearAll = () => {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.timeout-config {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 8px;
+  gap: 4px;
 }
 </style> 

@@ -44,6 +44,8 @@ public class Project {
     private String errorMsg;
     
     private String outputType; // "zip" or "single"
+    private String inputCharset; // 输入文件字符编码
+    private String outputCharset; // 输出文件字符编码
 
     @ManyToOne
     @JoinColumn(name = "user_group_id")

@@ -28,6 +28,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.nio.charset.StandardCharsets;
 import org.springframework.util.StringUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 @RestController
 @RequestMapping("/api/project")
@@ -50,6 +53,7 @@ public class ProjectController {
             @RequestParam("inputCharset") String inputCharset,
             @RequestParam("outputCharset") String outputCharset,
             @RequestParam(value = "concurrency", required = false, defaultValue = "1") int concurrency,
+            @RequestParam(value = "fileExtensions", required = false) String fileExtensionsJson,
             HttpServletRequest request) {
         try {
             User user = (User) session.getAttribute("user");
@@ -71,7 +75,23 @@ public class ProjectController {
             if (projectRepository.findAll().stream().anyMatch(p -> name.equals(p.getName()))) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("项目名称已存在，请更换名称");
             }
-            Project project = projectService.createAndRunProject(name, user.getUsername(), null, params, file, inputCharset, outputCharset, concurrency);
+            
+            // 解析文件后缀配置
+            List<String> fileExtensions = new ArrayList<>();
+            if (fileExtensionsJson != null && !fileExtensionsJson.isEmpty()) {
+                try {
+                    ObjectMapper mapper = new ObjectMapper();
+                    String[] extensions = mapper.readValue(fileExtensionsJson, String[].class);
+                    fileExtensions = Arrays.asList(extensions);
+                } catch (Exception e) {
+                    logger.warn("Failed to parse fileExtensions: {}", e.getMessage());
+                    fileExtensions = Arrays.asList("sql"); // 默认值
+                }
+            } else {
+                fileExtensions = Arrays.asList("sql"); // 默认值
+            }
+            
+            Project project = projectService.createAndRunProject(name, user.getUsername(), null, params, file, inputCharset, outputCharset, concurrency, fileExtensions);
             if(user.getUserGroup() != null) {
                 project.setUserGroup(user.getUserGroup());
                 project.setGroup(user.getUserGroup().getName());
@@ -230,6 +250,8 @@ public class ProjectController {
             String contentType;
             if ("zip".equals(project.getOutputType())) {
                 contentType = "application/zip";
+            } else if ("tar".equals(project.getOutputType())) {
+                contentType = "application/gzip";
             } else {
                 contentType = Files.probeContentType(path);
                 if (contentType == null) {
@@ -281,6 +303,17 @@ public class ProjectController {
     public int getMaxThreads() {
         return projectService.getMaxThreads();
     }
+    
+    // 修复项目状态
+    @PostMapping("/fix-status/{id}")
+    public ResponseEntity<?> fixProjectStatus(@PathVariable String id) {
+        try {
+            projectService.fixProjectStatus(id);
+            return ResponseEntity.ok().body("项目状态已修复");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("修复失败: " + e.getMessage());
+        }
+    }
 
     // 转换明细接口（支持分页、筛选、内容查找）
     @GetMapping("/detail/{id}")
@@ -311,8 +344,17 @@ public class ProjectController {
             java.util.List<Project.FileDetail> filtered = new java.util.ArrayList<>();
             for (Project.FileDetail f : details) {
                 try {
-                    String input = f.getInputPath() != null ? java.nio.file.Files.readString(java.nio.file.Paths.get(f.getInputPath())) : "";
-                    String output = f.getOutputPath() != null ? java.nio.file.Files.readString(java.nio.file.Paths.get(f.getOutputPath())) : "";
+                    // 使用正确的字符编码读取文件
+                    String inputCharset = project.getInputCharset() != null ? project.getInputCharset() : "UTF-8";
+                    String outputCharset = project.getOutputCharset() != null ? project.getOutputCharset() : "UTF-8";
+                    
+                    String input = f.getInputPath() != null ? 
+                        java.nio.file.Files.readString(java.nio.file.Paths.get(f.getInputPath()), 
+                            java.nio.charset.Charset.forName(inputCharset)) : "";
+                    String output = f.getOutputPath() != null ? 
+                        java.nio.file.Files.readString(java.nio.file.Paths.get(f.getOutputPath()), 
+                            java.nio.charset.Charset.forName(outputCharset)) : "";
+                    
                     boolean matched = (input != null && input.contains(keyword)) || (output != null && output.contains(keyword));
                     System.out.println("[内容查找] 文件: " + f.getFileName() + " 命中: " + matched);
                     if (matched) {
@@ -353,7 +395,15 @@ public class ProjectController {
         String path = "input".equals(type) ? detail.getInputPath() : detail.getOutputPath();
         if (!Files.exists(Paths.get(path))) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("文件不存在");
         try {
-            String content = Files.readString(Paths.get(path), StandardCharsets.UTF_8);
+            // 根据文件类型使用正确的字符编码
+            String charset;
+            if ("input".equals(type)) {
+                charset = project.getInputCharset() != null ? project.getInputCharset() : "UTF-8";
+            } else {
+                charset = project.getOutputCharset() != null ? project.getOutputCharset() : "UTF-8";
+            }
+            
+            String content = Files.readString(Paths.get(path), java.nio.charset.Charset.forName(charset));
             return ResponseEntity.ok(content);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("读取文件失败: " + e.getMessage());

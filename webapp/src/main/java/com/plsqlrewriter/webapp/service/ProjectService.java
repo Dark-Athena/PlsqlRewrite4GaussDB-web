@@ -24,6 +24,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.Arrays;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.FileAppender;
@@ -54,7 +55,31 @@ public class ProjectService {
         this.executor = Executors.newFixedThreadPool(this.maxThreads);
     }
     
+    private String getBaseName(String fileName) {
+        String name = fileName.toLowerCase();
+        if (name.endsWith(".tar.gz")) {
+            return fileName.substring(0, fileName.length() - 7);
+        } else if (name.endsWith(".tar.bz2")) {
+            return fileName.substring(0, fileName.length() - 8);
+        } else if (name.endsWith(".tgz")) {
+            return fileName.substring(0, fileName.length() - 4);
+        } else if (name.endsWith(".tbz2")) {
+            return fileName.substring(0, fileName.length() - 5);
+        } else if (name.endsWith(".tar") || name.endsWith(".bz2")) {
+            return fileName.substring(0, fileName.length() - 4);
+        } else if (name.endsWith(".gz")) {
+            return fileName.substring(0, fileName.length() - 3);
+        } else {
+            return fileName.contains(".") ? fileName.substring(0, fileName.lastIndexOf('.')) : fileName;
+        }
+    }
+    
+    // 兼容性方法，保持向后兼容
     public Project createAndRunProject(String name, String owner, String group, String params, MultipartFile file, String inputCharset, String outputCharset, int concurrency) throws IOException {
+        return createAndRunProject(name, owner, group, params, file, inputCharset, outputCharset, concurrency, Arrays.asList("sql"));
+    }
+    
+    public Project createAndRunProject(String name, String owner, String group, String params, MultipartFile file, String inputCharset, String outputCharset, int concurrency, List<String> fileExtensions) throws IOException {
         String id = UUID.randomUUID().toString();
         logger.info("Creating project id={}, name={}", id, name);
         Path uploadDir = Paths.get("data", id, "input");
@@ -75,6 +100,10 @@ public class ProjectService {
             String baseName = originalFilename.substring(0, originalFilename.length() - 4);
             outputFilename = String.format("%s_output_%d.zip", baseName, System.currentTimeMillis());
             project.setOutputType("zip");
+        } else if (originalFilename != null && com.plsqlrewriter.webapp.util.TarUtil.isSupportedArchive(originalFilename)) {
+            String baseName = getBaseName(originalFilename);
+            outputFilename = String.format("%s_output_%d.tar.gz", baseName, System.currentTimeMillis());
+            project.setOutputType("tar");
         } else {
             String baseName = originalFilename.contains(".") ? originalFilename.substring(0, originalFilename.lastIndexOf('.')) : originalFilename;
             String extension = originalFilename.contains(".") ? originalFilename.substring(originalFilename.lastIndexOf('.')) : "";
@@ -83,6 +112,8 @@ public class ProjectService {
         }
         project.setOutputFilePath("data/" + id + "/" + outputFilename);
         project.setLogFilePath("data/" + id + "/log.txt");
+        project.setInputCharset(inputCharset);
+        project.setOutputCharset(outputCharset);
         project.setStatus(Project.Status.QUEUED);
         project.setCreateTime(java.time.LocalDateTime.now());
         project.setUpdateTime(java.time.LocalDateTime.now());
@@ -121,16 +152,27 @@ public class ProjectService {
             rootLogger.addAppender(fileAppender);
             try (BufferedWriter logWriter = Files.newBufferedWriter(Paths.get(currentProject.getLogFilePath()), StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
                 logWriter.write("任务开始\n");
+                if ("zip".equals(currentProject.getOutputType()) || "tar".equals(currentProject.getOutputType())) {
+                    logWriter.write("配置的文件后缀：" + String.join(", ", fileExtensions) + "\n");
+                }
                 File inputFileAsFile = inputFile.toFile();
                 File outputDir = Paths.get("data/" + id + "/output").toFile();
                 outputDir.mkdirs();
-                if ("zip".equals(currentProject.getOutputType())) {
-                    // 1. 直接解压到 input 目录
-                    com.plsqlrewriter.webapp.util.ZipUtil.unzip(inputFileAsFile, uploadDir.toFile());
-                    // 2. 遍历 input 目录下所有 .sql 文件
+                if ("zip".equals(currentProject.getOutputType()) || "tar".equals(currentProject.getOutputType())) {
+                    // 1. 解压到 input 目录
+                    if ("zip".equals(currentProject.getOutputType())) {
+                        com.plsqlrewriter.webapp.util.ZipUtil.unzip(inputFileAsFile, uploadDir.toFile());
+                    } else {
+                        com.plsqlrewriter.webapp.util.TarUtil.extract(inputFileAsFile, uploadDir.toFile());
+                    }
+                    // 2. 遍历 input 目录下所有指定后缀的文件
                     List<Path> sqlFiles;
                     try (Stream<Path> walk = Files.walk(uploadDir)) {
-                        sqlFiles = walk.filter(p -> p.toString().toLowerCase().endsWith(".sql")).collect(Collectors.toList());
+                        sqlFiles = walk.filter(p -> {
+                            String fileName = p.getFileName().toString().toLowerCase();
+                            // 检查文件是否以配置的后缀结尾
+                            return fileExtensions.stream().anyMatch(ext -> fileName.endsWith("." + ext.toLowerCase()));
+                        }).collect(Collectors.toList());
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -175,7 +217,25 @@ public class ProjectService {
                     pool.shutdown();
                     currentProject.setFileDetails(fileDetails);
                     projectRepository.save(currentProject);
-                    com.plsqlrewriter.webapp.util.ZipUtil.zipDir(outputDir, new File(currentProject.getOutputFilePath()));
+                    
+                    // 3. 打包输出文件
+                    logWriter.write("开始打包输出文件...\n");
+                    logWriter.flush();
+                    try {
+                        if ("zip".equals(currentProject.getOutputType())) {
+                            com.plsqlrewriter.webapp.util.ZipUtil.zipDir(outputDir, new File(currentProject.getOutputFilePath()));
+                            logWriter.write("ZIP文件打包完成\n");
+                        } else {
+                            com.plsqlrewriter.webapp.util.TarUtil.createTarGz(outputDir, new File(currentProject.getOutputFilePath()));
+                            logWriter.write("TAR.GZ文件打包完成\n");
+                        }
+                        logWriter.flush();
+                    } catch (Exception packException) {
+                        logger.error("Packaging failed for project id={}, error: {}", currentProject.getId(), packException.getMessage(), packException);
+                        logWriter.write("打包失败: " + packException.getMessage() + "\n");
+                        logWriter.flush();
+                        throw packException; // 重新抛出，让外层catch处理
+                    }
                 } else { // "single"
                     String sql = new String(Files.readAllBytes(inputFile), inputCharset);
                     MDC.put("file", file.getOriginalFilename());
@@ -202,24 +262,41 @@ public class ProjectService {
                 logWriter.write("任务完成\n");
                 logWriter.flush();
                 success = true;
-            } catch (Exception ex) {
+            } catch (Throwable ex) { // 改为Throwable以捕获所有异常和错误
+                logger.error("Task failed for project id={}, error: {}", currentProject.getId(), ex.getMessage(), ex);
                 try (BufferedWriter logWriter = Files.newBufferedWriter(Paths.get(currentProject.getLogFilePath()), StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
                     logWriter.write("任务失败: " + ex.getMessage() + "\n");
                     ex.printStackTrace(new PrintWriter(logWriter));
                     logWriter.flush();
                 } catch(Exception ignore){}
-                currentProject.setStatus(Project.Status.FAILED);
-                currentProject.setErrorMsg(ex.getMessage());
+                
+                // 确保状态更新
+                try {
+                    currentProject.setStatus(Project.Status.FAILED);
+                    currentProject.setErrorMsg(ex.getMessage());
+                    currentProject.setUpdateTime(java.time.LocalDateTime.now());
+                    currentProject.setFinishTime(java.time.LocalDateTime.now());
+                    projectRepository.save(currentProject);
+                    logger.info("Task finished for project id={}, status={}", currentProject.getId(), currentProject.getStatus());
+                } catch (Exception saveException) {
+                    logger.error("Failed to save error status for project id={}, error: {}", currentProject.getId(), saveException.getMessage(), saveException);
+                }
             } finally {
                 rootLogger.detachAppender(fileAppender);
+                
+                // 确保成功状态更新 - 移到finally块确保执行
+                if (success) {
+                    try {
+                        currentProject.setStatus(Project.Status.SUCCESS);
+                        currentProject.setUpdateTime(java.time.LocalDateTime.now());
+                        currentProject.setFinishTime(java.time.LocalDateTime.now());
+                        projectRepository.save(currentProject);
+                        logger.info("Task finished for project id={}, status={}", currentProject.getId(), currentProject.getStatus());
+                    } catch (Exception saveException) {
+                        logger.error("Failed to save success status for project id={}, error: {}", currentProject.getId(), saveException.getMessage(), saveException);
+                    }
+                }
             }
-            if (success) {
-                currentProject.setStatus(Project.Status.SUCCESS);
-            }
-            currentProject.setUpdateTime(java.time.LocalDateTime.now());
-            currentProject.setFinishTime(java.time.LocalDateTime.now());
-            projectRepository.save(currentProject);
-            logger.info("Task finished for project id={}, status={}", currentProject.getId(), currentProject.getStatus());
         };
         this.enqueueTask(project, task);
         return project;
@@ -411,4 +488,39 @@ public class ProjectService {
     public int getMaxThreads() { return maxThreads; }
     public int getRunningCount() { return runningCount.get(); }
     public int getQueueSize() { return projectQueue.size(); }
+    
+    /**
+     * 修复项目状态 - 用于处理状态不一致的问题
+     */
+    public void fixProjectStatus(String projectId) {
+        Project project = projectRepository.findById(projectId).orElse(null);
+        if (project == null) {
+            logger.warn("Project {} not found for status fix", projectId);
+            return;
+        }
+        
+        // 如果项目不在运行队列中，且状态是QUEUED或RUNNING，检查是否应该标记为完成
+        if (!taskMap.containsKey(projectId) && !runningTasks.containsKey(projectId)) {
+            if (project.getStatus() == Project.Status.QUEUED || project.getStatus() == Project.Status.RUNNING) {
+                // 检查输出文件是否存在
+                Path outputPath = Paths.get(project.getOutputFilePath());
+                if (Files.exists(outputPath)) {
+                    // 文件存在，应该标记为成功
+                    project.setStatus(Project.Status.SUCCESS);
+                    project.setUpdateTime(java.time.LocalDateTime.now());
+                    project.setFinishTime(java.time.LocalDateTime.now());
+                    projectRepository.save(project);
+                    logger.info("Fixed project {} status to SUCCESS", projectId);
+                } else {
+                    // 文件不存在，可能失败了
+                    project.setStatus(Project.Status.FAILED);
+                    project.setErrorMsg("输出文件不存在，可能处理失败");
+                    project.setUpdateTime(java.time.LocalDateTime.now());
+                    project.setFinishTime(java.time.LocalDateTime.now());
+                    projectRepository.save(project);
+                    logger.info("Fixed project {} status to FAILED", projectId);
+                }
+            }
+        }
+    }
 } 

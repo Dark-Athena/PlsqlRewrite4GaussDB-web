@@ -20,15 +20,17 @@ export function getProjectList(params = {}) {
  * @param {string} inputCharset 输入字符集
  * @param {string} outputCharset 输出字符集
  * @param {number} concurrency 并发数
+ * @param {Array<string>} fileExtensions 文件后缀配置
  * @returns {Promise<axios.AxiosResponse<any>>}
  */
-export function createProject(name, file, inputCharset, outputCharset, concurrency = 1) {
+export function createProject(name, file, inputCharset, outputCharset, concurrency = 1, fileExtensions = ['sql']) {
     const formData = new FormData();
     formData.append('name', name);
     formData.append('file', file);
     formData.append('inputCharset', inputCharset);
     formData.append('outputCharset', outputCharset);
     formData.append('concurrency', concurrency);
+    formData.append('fileExtensions', JSON.stringify(fileExtensions));
 
     return request({
         url: '/api/project/create',

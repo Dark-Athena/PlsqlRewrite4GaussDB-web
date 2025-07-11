@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus';
 // 创建 axios 实例
 const request = axios.create({
     baseURL: '', // 关键：不加/api前缀，所有API路径写全
-    timeout: 5000,
+    timeout: 60000, // 增加超时时间到60秒，支持大文件读取
     withCredentials: true
 });
 
