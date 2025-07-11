@@ -10,7 +10,6 @@ import org.springframework.http.MediaType;
 import java.util.*;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 @RequestMapping("/api/template")
 public class ParamTemplateController {
     @Autowired

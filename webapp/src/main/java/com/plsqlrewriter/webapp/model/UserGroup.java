@@ -2,7 +2,6 @@ package com.plsqlrewriter.webapp.model;
 
 import jakarta.persistence.*;
 import java.util.Set;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
@@ -15,7 +14,7 @@ public class UserGroup {
     @Column(nullable = false, unique = true)
     private String name;
 
-    @JsonManagedReference
+    @JsonIgnore
     @OneToMany(mappedBy = "userGroup")
     private Set<com.plsqlrewriter.webapp.model.User> users;
 

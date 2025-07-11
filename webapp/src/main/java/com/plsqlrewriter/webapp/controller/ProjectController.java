@@ -31,7 +31,6 @@ import org.springframework.util.StringUtils;
 
 @RestController
 @RequestMapping("/api/project")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class ProjectController {
 
     private static final Logger logger = LoggerFactory.getLogger(ProjectController.class);
