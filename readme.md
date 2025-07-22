@@ -382,6 +382,6 @@ A: 使用批量转换模式，合理设置并发数，避免处理过大的单�
 
 **如果这个项目对你有帮助，请给我们一个 ⭐ Star！**
 
-[![star](https://gitee.com/darkathena/PlsqlRewrite4GaussDB/badge/star.svg?theme=dark)](https://gitee.com/darkathena/PlsqlRewrite4GaussDB)
+[![star](https://gitee.com/darkathena/PlsqlRewrite4GaussDB-web/badge/star.svg?theme=dark)](https://gitee.com/darkathena/PlsqlRewrite4GaussDB-web)
 
 </div>
