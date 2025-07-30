@@ -738,41 +738,222 @@ public class PlSqlRewriter {
             //将group by 前面的having 移动到group by后
             @Override
             public Void visitGroup_by_clause(PlSqlParser.Group_by_clauseContext ctx) {
-                PlSqlParser.Having_clauseContext havingClause = null;
-                Integer groupByFound =0;
-                // 查找 having_clause
-                for (ParseTree child : ctx.children) {
-                    if (child instanceof PlSqlParser.Group_by_elementsContext){
-                        groupByFound=1;
+                // 先处理字符串常量的移除
+                boolean groupByCompletelyRemoved = handleGroupByStringConstants(ctx);
+                
+                // 如果GROUP BY子句没有被完全删除，处理having子句移动
+                if (!groupByCompletelyRemoved) {
+                    PlSqlParser.Having_clauseContext havingClause = null;
+                    Integer groupByFound = 0;
+                    // 查找 having_clause
+                    for (ParseTree child : ctx.children) {
+                        if (child instanceof PlSqlParser.Group_by_elementsContext) {
+                            groupByFound = 1;
+                        }
+                        if (child instanceof PlSqlParser.Having_clauseContext && groupByFound != 1) {
+                            havingClause = (PlSqlParser.Having_clauseContext) child;
+                            break;
+                        }
                     }
-                    if (child instanceof PlSqlParser.Having_clauseContext && groupByFound!=1) {
-                        havingClause = (PlSqlParser.Having_clauseContext) child;
+        
+                    // 如果存在 having_clause 且存在 group_by_elements
+                    if (havingClause != null && ctx.group_by_elements() != null && !ctx.group_by_elements().isEmpty()) {
+                        // 删除原有的 having_clause
+                        rewriter.delete(havingClause.getStart(), havingClause.getStop());
+        
+                        // 获取原始的having_clause文本
+                        TokenStream tokens = rewriter.getTokenStream();
+                        String havingText = tokens.getText(havingClause.getSourceInterval());
+                        rewriter.insertAfter(ctx.group_by_elements(ctx.group_by_elements().size() - 1).getStop(), " " + havingText);
+                        logger.warn("Moved having clause to group by clause: file: {}, line: {}, position: {}, {}", inputFile, ctx.group_by_elements(ctx.group_by_elements().size() - 1).getStop().getLine(), ctx.group_by_elements(ctx.group_by_elements().size() - 1).getStop().getCharPositionInLine(), havingText);
+                    }
+                }
+                
+                return visitChildren(ctx);
+            }
+
+            // 检查表达式是否为字符串常量
+            private boolean isStringConstantExpression(PlSqlParser.ExpressionContext expr) {
+                if (expr == null) {
+                    return false;
+                }
+                
+                // 简单而可靠的方法：检查表达式文本是否为单引号包围的字符串
+                String text = expr.getText().trim();
+                boolean isStringConstant = text.startsWith("'") && text.endsWith("'") && text.length() > 1;
+                
+                // 添加调试日志
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Checking expression: '{}' -> isStringConstant: {}", text, isStringConstant);
+                }
+                
+                return isStringConstant;
+            }
+
+            // 处理GROUP BY子句中的字符串常量移除
+            // 返回true如果整个GROUP BY子句被删除，false否则
+            private boolean handleGroupByStringConstants(PlSqlParser.Group_by_clauseContext ctx) {
+                if (ctx.group_by_elements() == null || ctx.group_by_elements().isEmpty()) {
+                    return false;
+                }
+
+                List<PlSqlParser.Group_by_elementsContext> allElements = ctx.group_by_elements();
+                List<PlSqlParser.Group_by_elementsContext> stringConstantElements = new ArrayList<>();
+                
+                // 找出所有的字符串常量元素
+                for (PlSqlParser.Group_by_elementsContext element : allElements) {
+                    if (element.expression() != null && isStringConstantExpression(element.expression())) {
+                        stringConstantElements.add(element);
+                    }
+                }
+                
+                if (stringConstantElements.isEmpty()) {
+                    return false; // 没有字符串常量，无需处理
+                }
+                
+                // 如果所有元素都是字符串常量，删除整个GROUP BY子句
+                if (stringConstantElements.size() == allElements.size()) {
+                    // 保存having子句以便后续处理
+                    PlSqlParser.Having_clauseContext havingClause = null;
+                    for (ParseTree child : ctx.children) {
+                        if (child instanceof PlSqlParser.Having_clauseContext) {
+                            havingClause = (PlSqlParser.Having_clauseContext) child;
+                            break;
+                        }
+                    }
+                    
+                    String havingText = "";
+                    if (havingClause != null) {
+                        TokenStream tokenStream = rewriter.getTokenStream();
+                        havingText = " " + tokenStream.getText(havingClause.getSourceInterval());
+                    }
+                    
+                    // 删除整个GROUP BY子句，包括前面的空格
+                    Token startToken = ctx.getStart();
+                    Token stopToken = ctx.getStop();
+                    
+                    // 查找GROUP BY前的空格并一起删除
+                    TokenStream tokenStream = tokens;
+                    int startIndex = startToken.getTokenIndex();
+                    
+                    // 向前查找空格
+                    for (int i = startIndex - 1; i >= 0; i--) {
+                        Token prevToken = tokenStream.get(i);
+                        if (prevToken.getChannel() == Token.HIDDEN_CHANNEL && 
+                            (prevToken.getText().contains(" ") || prevToken.getText().contains("\n") || prevToken.getText().contains("\t"))) {
+                            startToken = prevToken;
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    // 如果有having子句，在删除GROUP BY后插入having子句
+                    if (havingClause != null) {
+                        rewriter.replace(startToken, stopToken, havingText);
+                    } else {
+                        rewriter.delete(startToken, stopToken);
+                    }
+                    
+                    logger.debug("Removed entire GROUP BY clause (all string constants): file: {}, line: {}, position: {}", 
+                        inputFile, ctx.getStart().getLine(), ctx.getStart().getCharPositionInLine());
+                    return true; // 整个GROUP BY子句被删除
+                } else {
+                    // 只删除字符串常量元素，保留其他元素
+                    // 重新构建GROUP BY列表，简化空格处理
+                    
+                    StringBuilder newGroupByElements = new StringBuilder();
+                    boolean first = true;
+                    
+                    for (int i = 0; i < allElements.size(); i++) {
+                        PlSqlParser.Group_by_elementsContext element = allElements.get(i);
+                        if (!isStringConstantExpression(element.expression())) {
+                            if (!first) {
+                                newGroupByElements.append(", ");
+                            }
+                            newGroupByElements.append(element.getText());
+                            first = false;
+                        }
+                    }
+                    
+                    // 找到第一个group_by_elements和最后一个group_by_elements的位置
+                    Token firstElementStart = allElements.get(0).getStart();
+                    Token lastElementStop = allElements.get(allElements.size() - 1).getStop();
+                    
+                    // 替换整个group_by_elements列表
+                    rewriter.replace(firstElementStart, lastElementStop, newGroupByElements.toString());
+                    
+                    logger.debug("Removed string constants from GROUP BY: file: {}, line: {}, position: {}, new elements: {}", 
+                        inputFile, ctx.getStart().getLine(), ctx.getStart().getCharPositionInLine(), newGroupByElements.toString());
+                    return false; // GROUP BY子句没有被完全删除
+                }
+            }
+            
+            // 查找下一个逗号标记
+            private Token findNextCommaToken(Token start, Token end) {
+                TokenStream tokenStream = tokens;
+                int startIndex = start.getTokenIndex();
+                int endIndex = end.getTokenIndex();
+                
+                for (int i = startIndex + 1; i < endIndex; i++) {
+                    Token token = tokenStream.get(i);
+                    if (",".equals(token.getText())) {
+                        return token;
+                    }
+                }
+                return null;
+            }
+            
+            // 查找指定token之后的特定文本的token
+            private Token findTokenAfter(Token startToken, String text) {
+                TokenStream tokenStream = tokens;
+                int startIndex = startToken.getTokenIndex();
+                
+                for (int i = startIndex + 1; i < tokenStream.size(); i++) {
+                    Token token = tokenStream.get(i);
+                    if (text.equals(token.getText())) {
+                        return token;
+                    }
+                    // 如果遇到非空白、非逗号的token，停止搜索
+                    if (token.getChannel() == Token.DEFAULT_CHANNEL && !text.equals(token.getText())) {
                         break;
                     }
                 }
-    
-                // 调试信息
-                // System.out.println("Found having clause: " + (havingClause != null));
-                // if (ctx.group_by_elements() != null) {
-                //     for (PlSqlParser.Group_by_elementsContext element : ctx.group_by_elements()) {
-                //         System.out.println("Group by element: " + element.getText());
-                //     }
-                // }
-    
-                // 如果存在 having_clause 且存在 group_by_elements
-                if (havingClause != null && ctx.group_by_elements() != null && !ctx.group_by_elements().isEmpty()) {
-                    // 删除原有的 having_clause
-                    rewriter.delete(havingClause.getStart(), havingClause.getStop());
-    
-                    // 获取原始的having_clause文本
-                    TokenStream tokens = rewriter.getTokenStream();
-                    String havingText = tokens.getText(havingClause.getSourceInterval());
-                    rewriter.insertAfter(ctx.group_by_elements(ctx.group_by_elements().size() - 1).getStop(), " " + havingText);
-                    logger.warn("Moved having clause to group by clause: file: {}, line: {}, position: {}, {}", inputFile, ctx.group_by_elements(ctx.group_by_elements().size() - 1).getStop().getLine(), ctx.group_by_elements(ctx.group_by_elements().size() - 1).getStop().getCharPositionInLine(), havingText);
-                }
-                return visitChildren(ctx);
+                return null;
             }
-    
+            
+            // 查找指定token之前的特定文本的token
+            private Token findTokenBefore(Token endToken, String text) {
+                TokenStream tokenStream = tokens;
+                int endIndex = endToken.getTokenIndex();
+                
+                for (int i = endIndex - 1; i >= 0; i--) {
+                    Token token = tokenStream.get(i);
+                    if (text.equals(token.getText())) {
+                        return token;
+                    }
+                    // 如果遇到非空白、非逗号的token，停止搜索
+                    if (token.getChannel() == Token.DEFAULT_CHANNEL && !text.equals(token.getText())) {
+                        break;
+                    }
+                }
+                return null;
+            }
+            
+            // 查找前一个逗号标记
+            private Token findPrevCommaToken(Token start, Token end) {
+                TokenStream tokenStream = tokens;
+                int startIndex = start.getTokenIndex();
+                int endIndex = end.getTokenIndex();
+                
+                for (int i = startIndex + 1; i < endIndex; i++) {
+                    Token token = tokenStream.get(i);
+                    if (",".equals(token.getText())) {
+                        return token;
+                    }
+                }
+                return null;
+            }
+
             //将result_cahce子句替换成immutable
             @Override 
             public Void visitResult_cache_clause(PlSqlParser.Result_cache_clauseContext ctx) { 

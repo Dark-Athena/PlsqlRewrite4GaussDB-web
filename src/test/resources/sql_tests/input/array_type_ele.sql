@@ -23,3 +23,16 @@ end loop;
 end;
 end;
 /
+
+declare
+ type tyt_test2 is table of ty_test2 index by varchar2;
+ l_tyt_test2 tyt_test2;
+ l_cnt number;
+ begin
+     l_tyt_test2('cc').begindate:=null;
+     l_tyt_test2('cc').enddate:=null;
+     select count(case when l_tyt_test2('cc').begindate is null and l_tyt_test2('cc').enddate is null then 1 end) 
+          into l_cnt
+          from t_test2 where id='cc' and rownum<=100000;
+ end;
+ /

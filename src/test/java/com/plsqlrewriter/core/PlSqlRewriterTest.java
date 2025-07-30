@@ -149,6 +149,27 @@ public class PlSqlRewriterTest {
         // Add more SQL test cases as needed
     }
 
+    @Test
+    public void testGroupByStringConstantsRemoval() throws Exception {
+        // Test single string constant removal - should remove entire GROUP BY clause
+        String inputSql1 = "select 1 from t group by 'constant string';";
+        String expectedSql1 = "select 1 from t;";
+        String result1 = PlSqlRewriter.rewriteSql(inputSql1, "UTF-8", "UTF-8");
+        assertEquals("Single string constant GROUP BY should be removed entirely", expectedSql1, result1.trim());
+
+        // Test mixed elements - should remove only string constants
+        String inputSql2 = "select 1 from t group by 'constant string', col1, col2;";
+        String expectedSql2 = "select 1 from t group by col1, col2;";
+        String result2 = PlSqlRewriter.rewriteSql(inputSql2, "UTF-8", "UTF-8");
+        assertEquals("String constants should be removed from GROUP BY list", expectedSql2, result2.trim());
+
+        // Test multiple string constants with other elements
+        String inputSql3 = "select 1 from t group by col1, 'constant string', col2, 'another constant string';";
+        String expectedSql3 = "select 1 from t group by col1, col2;";
+        String result3 = PlSqlRewriter.rewriteSql(inputSql3, "UTF-8", "UTF-8");
+        assertEquals("Multiple string constants should be removed from GROUP BY list", expectedSql3, result3.trim());
+    }
+
     private boolean compareFiles(Path actualPath, Path expectedPath) throws IOException {
         if (!Files.exists(expectedPath)) {
             logger.error("Expected file does not exist: {}", expectedPath);

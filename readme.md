@@ -159,6 +159,12 @@ start_server.bat           # Windows
 
 访问 http://127.0.0.1:8080，使用默认账号 `admin/password` 登录。
 
+
+### docker 镜像构建和容器创建
+```shell
+docker build -t plsqlrewrite4gaussdb:1.0.0-beta .
+docker run --name plsqlrewrite4gaussdb-1.0.0-beta -d -p 8080:8080 plsqlrewrite4gaussdb:1.0.0-beta
+```
 ## 📖 详细使用指南
 
 ### 1. 命令行使用
