@@ -56,4 +56,3 @@ copy LICENSE release\
 
 REM 6. done
 echo package finished
-pause 

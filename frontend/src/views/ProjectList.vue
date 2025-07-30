@@ -130,15 +130,15 @@
         <el-button @click="detailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
-    <el-dialog v-model="compareDialogVisible" title="文件对比" width="80vw">
-      <div style="display: flex; gap: 16px;">
-        <div style="flex:1;">
-          <div style="font-weight:bold; margin-bottom:4px;">原始内容</div>
-          <pre style="background:#222;color:#eee;min-height:300px;max-height:60vh;overflow:auto;white-space:pre-wrap;">{{ compareInput }}</pre>
+    <el-dialog v-model="compareDialogVisible" title="文件对比" width="90vw" class="compare-dialog">
+      <div class="compare-container">
+        <div class="compare-panel">
+          <div class="panel-title">原始内容</div>
+          <pre class="code-content">{{ compareInput }}</pre>
         </div>
-        <div style="flex:1;">
-          <div style="font-weight:bold; margin-bottom:4px;">转换后内容</div>
-          <pre style="background:#222;color:#eee;min-height:300px;max-height:60vh;overflow:auto;white-space:pre-wrap;">{{ compareOutput }}</pre>
+        <div class="compare-panel">
+          <div class="panel-title">转换后内容</div>
+          <pre class="code-content">{{ compareOutput }}</pre>
         </div>
       </div>
       <template #footer>
@@ -506,7 +506,77 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
 }
+
 .filter-form {
   margin-bottom: 16px;
+}
+
+/* 文件对比对话框样式 */
+.compare-dialog :deep(.el-dialog) {
+  max-width: 95vw;
+  margin: 5vh auto;
+}
+
+.compare-dialog :deep(.el-dialog__body) {
+  padding: 10px 20px;
+}
+
+.compare-container {
+  display: flex;
+  gap: 16px;
+  height: 70vh;
+  min-height: 400px;
+}
+
+.compare-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* 允许flex子元素缩小到内容宽度以下 */
+}
+
+.panel-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+}
+
+.code-content {
+  flex: 1;
+  background: #222;
+  color: #eee;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 0 0 4px 4px;
+  overflow: auto;
+  white-space: pre;
+  word-wrap: break-word;
+  word-break: break-all;
+  /* 确保长行能够正确换行显示 */
+  overflow-wrap: break-word;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .compare-container {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .compare-panel {
+    min-height: 300px;
+  }
+  
+  .code-content {
+    max-height: 300px;
+  }
 }
 </style> 
