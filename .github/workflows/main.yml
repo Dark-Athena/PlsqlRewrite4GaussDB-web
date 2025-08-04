@@ -1,10 +1,12 @@
 name: Build and Release
 
 on:
-  #push:
-  #  tags:
-  #    - 'v*'  # 当推送标签时触发，例如 v1.0.0
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:  # 只允许手动触发
+    inputs:
+      version:
+        description: '发布版本号 (例如: v1.0.0)'
+        required: true
+        type: string
 
 jobs:
   build-and-release:
@@ -94,28 +96,29 @@ jobs:
     - name: Create release archive
       run: |
         cd release
-        tar -czf ../PlsqlRewrite4GaussDB-web-v1.0.0-beta.tar.gz .
-        zip -r ../PlsqlRewrite4GaussDB-web-v1.0.0-beta.zip .
+        tar -czf ../PlsqlRewrite4GaussDB-${{ github.event.inputs.version }}.tar.gz .
+        zip -r ../PlsqlRewrite4GaussDB-${{ github.event.inputs.version }}.zip .
         cd ..
         
     - name: Upload release artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: release-package
+        name: release-package-${{ github.event.inputs.version }}
         path: |
-          PlsqlRewrite4GaussDB-web-v1.0.0-beta.tar.gz
-          PlsqlRewrite4GaussDB-web-v1.0.0-beta.zip
+          PlsqlRewrite4GaussDB-${{ github.event.inputs.version }}.tar.gz
+          PlsqlRewrite4GaussDB-${{ github.event.inputs.version }}.zip
         retention-days: 30
         
     - name: Create GitHub Release
-      #if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
+        tag_name: ${{ github.event.inputs.version }}
+        name: PlsqlRewrite4GaussDB ${{ github.event.inputs.version }}
         files: |
-          PlsqlRewrite4GaussDB-web-v1.0.0-beta.tar.gz
-          PlsqlRewrite4GaussDB-web-v1.0.0-beta.zip
+          PlsqlRewrite4GaussDB-${{ github.event.inputs.version }}.tar.gz
+          PlsqlRewrite4GaussDB-${{ github.event.inputs.version }}.zip
         body: |
-          ## PlsqlRewrite4GaussDB-web-v1.0.0-beta
+          ## PlsqlRewrite4GaussDB Release
           
           ### 功能特性
           - PL/SQL 到 GaussDB 转换工具
@@ -141,3 +144,4 @@ jobs:
         prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
