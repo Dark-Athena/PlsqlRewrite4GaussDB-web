@@ -1,0 +1,143 @@
+name: Build and Release
+
+on:
+  #push:
+  #  tags:
+  #    - 'v*'  # 当推送标签时触发，例如 v1.0.0
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Build core module
+      run: |
+        echo "构建核心模块..."
+        mvn clean install -DskipTests
+        
+    - name: Build frontend
+      run: |
+        echo "构建前端..."
+        cd frontend
+        npm ci
+        npm run build
+        cd ..
+        
+    - name: Copy frontend static files
+      run: |
+        echo "拷贝前端静态文件..."
+        rm -rf webapp/src/main/resources/static
+        mkdir -p webapp/src/main/resources/static
+        cp -r frontend/dist/* webapp/src/main/resources/static/
+        
+    - name: Build backend
+      run: |
+        echo "构建后端..."
+        cd webapp
+        mvn clean package -DskipTests
+        cd ..
+        
+    - name: Assemble release package
+      run: |
+        echo "组装 release 目录..."
+        rm -rf release
+        mkdir -p release
+        mkdir -p release/config
+        mkdir -p release/data
+        mkdir -p release/lib
+        mkdir -p release/logs
+        mkdir -p release/target
+        
+        cp webapp/target/webapp-1.0.0.jar release/
+        cp target/plsql-rewriter-1.0-SNAPSHOT.jar release/lib/
+        cp target/plsql-rewriter-1.0-SNAPSHOT-jar-with-dependencies.jar release/target/
+        cp -r config/* release/config/
+        cp start_server.sh release/
+        cp start_server.bat release/
+        cp convert.bat release/
+        cp convert.sh release/
+        cp batch_convert.bat release/
+        cp batch_convert.sh release/
+        cp grun_tree.bat release/
+        cp grun_tree.sh release/
+        cp readme.md release/
+        cp readme_core.md release/
+        cp LICENSE release/
+        
+        # 设置执行权限
+        chmod +x release/*.sh
+        
+    - name: Create release archive
+      run: |
+        cd release
+        tar -czf ../PlsqlRewrite4GaussDB-web-v1.0.0-beta.tar.gz .
+        zip -r ../PlsqlRewrite4GaussDB-web-v1.0.0-beta.zip .
+        cd ..
+        
+    - name: Upload release artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-package
+        path: |
+          PlsqlRewrite4GaussDB-web-v1.0.0-beta.tar.gz
+          PlsqlRewrite4GaussDB-web-v1.0.0-beta.zip
+        retention-days: 30
+        
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          PlsqlRewrite4GaussDB-web-v1.0.0-beta.tar.gz
+          PlsqlRewrite4GaussDB-web-v1.0.0-beta.zip
+        body: |
+          ## PlsqlRewrite4GaussDB-web-v1.0.0-beta
+          
+          ### 功能特性
+          - PL/SQL 到 GaussDB 转换工具
+          - 基于 ANTLR4 的解析引擎
+          - Web 界面和 REST API
+          - 批量处理支持
+          
+          ### 使用方法
+          1. 解压发布包
+          2. 执行 `start_server.sh` (Linux/Mac) 或 `start_server.bat` (Windows)
+          3. 访问 http://localhost:8080
+          
+          ### 单文件转换
+          ```bash
+          ./convert.sh input.sql output.sql
+          ```
+          
+          ### 批量转换
+          ```bash
+          ./batch_convert.sh input_dir output_dir
+          ```
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
