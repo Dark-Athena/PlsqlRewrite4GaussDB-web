@@ -5,9 +5,9 @@ FROM busybox:latest AS downloader
 WORKDIR /download
 
 # 下载并解压应用程序
-RUN wget https://gitee.com/darkathena/PlsqlRewrite4GaussDB-web/releases/download/1.0.0-beta/PlsqlRewrite4GaussDB-web-v1.0.0-beta.zip \
-    && unzip PlsqlRewrite4GaussDB-web-v1.0.0-beta.zip \
-    && rm PlsqlRewrite4GaussDB-web-v1.0.0-beta.zip
+RUN wget https://gitee.com/darkathena/PlsqlRewrite4GaussDB-web/releases/download/1.0.1-beta/PlsqlRewrite4GaussDB-web-v1.0.0-beta.zip \
+    && unzip PlsqlRewrite4GaussDB-web-v1.0.1-beta.zip \
+    && rm PlsqlRewrite4GaussDB-web-v1.0.1-beta.zip
 
 # 第二阶段：运行环境
 FROM eclipse-temurin:17-jre-focal
@@ -22,4 +22,5 @@ COPY --from=downloader /download/ /app/
 EXPOSE 8080
 
 # 启动命令
+
 CMD ["java", "-Dloader.path=lib/", "-Dloader.main=com.plsqlrewriter.webapp.WebappApplication", "-jar", "webapp-1.0.0.jar"]
