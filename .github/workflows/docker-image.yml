@@ -18,5 +18,5 @@ jobs:
         with:
           push: true
           tags: |
-            darkathena/PlsqlRewrite4GaussDB-web:latest
-            darkathena/PlsqlRewrite4GaussDB-web:${{ github.sha }}
+            darkathena/plsqlrewrite4gaussdb-web:latest
+            darkathena/plsqlrewrite4gaussdb-web:${{ github.sha }}
