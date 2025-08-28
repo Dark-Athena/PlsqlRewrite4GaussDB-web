@@ -16,3 +16,4 @@
 /webapp/target/*
 /webapp/logs/*
 /.github/*
+!/.github/workflows

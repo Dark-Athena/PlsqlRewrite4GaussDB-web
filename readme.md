@@ -165,6 +165,11 @@ start_server.bat           # Windows
 docker build -t plsqlrewrite4gaussdb:1.0.0-beta .
 docker run --name plsqlrewrite4gaussdb-1.0.0-beta -d -p 8080:8080 plsqlrewrite4gaussdb:1.0.0-beta
 ```
+
+也可以从docker hub在线拉取创建
+```shell
+docker run --name plsqlrewrite4gaussdb -d -p 8080:8080 darkathena/plsqlrewrite4gaussdb-web:latest
+```
 ## 📖 详细使用指南
 
 ### 1. 命令行使用
