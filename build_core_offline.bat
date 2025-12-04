@@ -18,9 +18,9 @@ REM Set environment variables
 set CLASSPATH=.;^
 lib\antlr-4.13.2-complete.jar;^
 lib\snakeyaml-2.3.jar;^
-lib\slf4j-api-2.0.7.jar;^
-lib\logback-core-1.4.14.jar
-lib\logback-classic-1.4.14.jar;^
+lib\slf4j-api-2.0.15.jar;^
+lib\logback-core-1.5.19.jar
+lib\logback-classic-1.5.19.jar;^
 
 
 REM Compile Java source files

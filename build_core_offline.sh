@@ -14,9 +14,9 @@ esac
 CLASSPATH=".${PATHSEP}"\
 "lib/antlr-4.13.2-complete.jar${PATHSEP}"\
 "lib/snakeyaml-2.3.jar${PATHSEP}"\
-"lib/slf4j-api-2.0.7.jar${PATHSEP}"\
-"lib/logback-core-1.4.14.jar${PATHSEP}"\
-"lib/logback-classic-1.4.14.jar"
+"lib/slf4j-api-2.0.15.jar${PATHSEP}"\
+"lib/logback-core-1.5.19.jar${PATHSEP}"\
+"lib/logback-classic-1.5.19.jar"
 
 # Clean and create output directories
 echo "[INFO] Cleaning and creating directories..."
