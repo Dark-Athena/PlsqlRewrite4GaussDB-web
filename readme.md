@@ -3,7 +3,7 @@
 <div align="center">
 
 ![Java](https://img.shields.io/badge/Java-17+-orange.svg)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.5-brightgreen.svg)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.11-brightgreen.svg)
 ![Vue.js](https://img.shields.io/badge/Vue.js-3.5.17-4FC08D.svg)
 ![ANTLR4](https://img.shields.io/badge/ANTLR4-4.13.2-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
